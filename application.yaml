@@ -1,0 +1,40 @@
+server:
+  port: 8081
+
+spring:
+  datasource:
+    username: root
+    password: secret
+    url: jdbc:mysql://localhost:3306/search_engine?useSSL=false&requireSSL=false&allowPublicKeyRetrieval=true
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+    hibernate:
+            ddl-auto: update
+#            ddl-auto: create-drop
+#            ddl-auto: create
+            show-sql: true
+
+indexing-settings:
+  sites:
+    - url: https://centrkinomir.ru/
+      name: centrkinomir.ru
+    - url: https://www.playback.ru
+      name: PlayBack.Ru
+#    - url: https://volochek.life/
+#      name: volochek.ru
+#    - url: https://ipfran.ru/
+#      name: ipfran.ru
+#    - url: https://et-cetera.ru/mobile/
+#      name: et-cetera.ru
+#    - url: https://www.lutherancathedral.ru/
+#      name: lutherancathedral.ru
+    - url: https://www.svetlovka.ru/
+      name: svetlovka.ru
+
+logging:
+  level:
+    root:
+      info
+#     fatal, error, warn, info, debug, trace
