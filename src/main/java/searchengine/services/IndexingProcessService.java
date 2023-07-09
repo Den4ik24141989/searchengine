@@ -2,7 +2,6 @@ package searchengine.services;
 
 import lombok.Getter;
 import lombok.Setter;
-import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 import searchengine.model.PageModel;
 import searchengine.model.SiteModel;
@@ -11,7 +10,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ForkJoinPool;
 
-@Component
 @Service
 @Getter
 @Setter

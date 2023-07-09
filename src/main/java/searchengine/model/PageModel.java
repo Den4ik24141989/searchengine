@@ -21,7 +21,7 @@ public class PageModel implements Serializable {
 
     @ManyToOne
     @JoinColumn(name = "site_id", columnDefinition = "INT NOT NULL")
-    @OnDelete(action = OnDeleteAction.CASCADE)                //каскадное удаление в БД
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private SiteModel site;
 
     @Column(name = "path", columnDefinition = "TEXT NOT NULL, Index (path(512))")

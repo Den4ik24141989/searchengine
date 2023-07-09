@@ -11,6 +11,9 @@ import searchengine.dto.statistics.TotalStatistics;
 import searchengine.model.LemmaModel;
 import searchengine.model.PageModel;
 import searchengine.model.SiteModel;
+import searchengine.repository.LemmaRepository;
+import searchengine.repository.PageRepository;
+import searchengine.repository.SiteRepository;
 
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -21,7 +24,9 @@ import java.util.List;
 public class StatisticsServiceImpl implements StatisticsService {
 
     private final SitesList sites;
-    private final WorkingWithDataService workingWithDataService;
+    private final SiteRepository siteRepository;
+    private final PageRepository pageRepository;
+    private final LemmaRepository lemmaRepository;
 
     @Override
     public StatisticsResponse getStatistics() {
@@ -32,7 +37,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         List<Site> sitesList = sites.getSites();
 
         for (Site site : sitesList) {
-            SiteModel siteModel = workingWithDataService.getSiteRepository().findByUrl(site.getUrl());
+            SiteModel siteModel = siteRepository.findByUrl(site.getUrl());
             if (siteModel == null) {
                 continue;
             }
@@ -61,11 +66,11 @@ public class StatisticsServiceImpl implements StatisticsService {
     }
 
     private int getCountPageSite (int siteId) {
-        List<PageModel> listPages = workingWithDataService.getPageRepository().findAllBySiteId(siteId);
+        List<PageModel> listPages = pageRepository.findAllBySiteId(siteId);
         return listPages.size();
     }
     private int getCountLemmasSite (int siteId) {
-        List<LemmaModel> listLemmas = workingWithDataService.getLemmaRepository().findAllBySiteId(siteId);
+        List<LemmaModel> listLemmas = lemmaRepository.findAllBySiteId(siteId);
         return listLemmas.size();
     }
 }

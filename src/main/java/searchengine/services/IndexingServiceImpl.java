@@ -4,10 +4,17 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import searchengine.config.Site;
-import searchengine.model.PageModel;
-import searchengine.model.SiteModel;
+import searchengine.config.SitesList;
+import searchengine.model.*;
 import searchengine.parsers.Parser;
+import searchengine.repository.IndexRepository;
+import searchengine.repository.LemmaRepository;
+import searchengine.repository.PageRepository;
+import searchengine.repository.SiteRepository;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
@@ -17,7 +24,11 @@ import java.util.regex.Pattern;
 @Service
 @RequiredArgsConstructor
 public class IndexingServiceImpl implements IndexingService {
-    private final WorkingWithDataService workingWithDataService;
+    private final SitesList sitesList;
+    private final SiteRepository siteRepository;
+    private final PageRepository pageRepository;
+    private final LemmaRepository lemmaRepository;
+    private final IndexRepository indexRepository;
     private final IndexingProcessService indexingProcessService;
     private final int processorCoreCount = Runtime.getRuntime().availableProcessors();
     private Executor executor;
@@ -25,7 +36,7 @@ public class IndexingServiceImpl implements IndexingService {
     @Override
     public boolean startFullIndexing() {
         if (!isIndexingProcessRunning()) {
-            workingWithDataService.clearDB();
+            siteRepository.deleteAll();
             indexingProcessService.enableFullIndexing();
             executeFullIndexing();
             return true;
@@ -41,28 +52,28 @@ public class IndexingServiceImpl implements IndexingService {
         String pathPageNotNameSite = url.replaceAll(rootUrl, "/");
         Site site = new Site();
         site.setUrl(rootUrl);
-        if (!workingWithDataService.getSitesList().getSites().contains(site)) {
+        if (!sitesList.getSites().contains(site)) {
             log.info(url + " - данная страница находится за пределами сайтов, указанных в конфигурационном файле");
             return false;
         }
         executor = Executors.newSingleThreadExecutor();
         indexingProcessService.enableSingleIndexing(url);
-        PageModel pageModel = workingWithDataService.getPageRepository().findByPath(pathPageNotNameSite);
+        PageModel pageModel = pageRepository.findByPath(pathPageNotNameSite);
         if (pageModel != null) {
             SiteModel siteModel = pageModel.getSite();
-            workingWithDataService.updateLemmaFrequency(pageModel);
-            workingWithDataService.getPageRepository().delete(pageModel);
-            executor.execute(new Parser(siteModel, workingWithDataService, indexingProcessService));
+            updateLemmaFrequency(pageModel);
+            pageRepository.delete(pageModel);
+            executeParser(siteModel);
             return true;
         }
-        SiteModel siteModel = workingWithDataService.getSiteRepository().findByUrl(rootUrl);
+        SiteModel siteModel = siteRepository.findByUrl(rootUrl);
         if (siteModel != null) {
-            executor.execute(new Parser(siteModel, workingWithDataService, indexingProcessService));
+            executeParser(siteModel);
             return true;
         }
-        site = workingWithDataService.getSitesList().getSite(rootUrl);
-        siteModel = workingWithDataService.createAndSaveSite(site);
-        executor.execute(new Parser(siteModel, workingWithDataService, indexingProcessService));
+        site = sitesList.getSite(rootUrl);
+        siteModel = createAndSaveSite(site);
+        executeParser(siteModel);
         return true;
     }
 
@@ -99,9 +110,35 @@ public class IndexingServiceImpl implements IndexingService {
 
     private void executeFullIndexing () {
         executor = Executors.newFixedThreadPool(processorCoreCount);
-        for (Site site : workingWithDataService.getSitesList().getSites()) {
-            SiteModel siteModel = workingWithDataService.createAndSaveSite(site);
-            executor.execute(new Parser(siteModel, workingWithDataService, indexingProcessService));
+        for (Site site : sitesList.getSites()) {
+            SiteModel siteModel = createAndSaveSite(site);
+            executeParser(siteModel);
         }
+    }
+
+    private void executeParser (SiteModel siteModel) {
+        executor.execute(new Parser(siteModel, siteRepository, pageRepository,
+                lemmaRepository, indexRepository, indexingProcessService));
+    }
+
+    public void updateLemmaFrequency (PageModel pageModel) {
+        List<IndexModel> listIndex = indexRepository.findAllByPageId(pageModel.getId());
+        List <LemmaModel> listLemmaUpdate = new ArrayList<>(listIndex.size());
+        for (IndexModel index : listIndex) {
+            LemmaModel lemmaModel = lemmaRepository.findById(index.getLemmaId().getId());
+            lemmaModel.setFrequency(lemmaModel.getFrequency() - 1);
+            listLemmaUpdate.add(lemmaModel);
+        }
+        lemmaRepository.saveAll(listLemmaUpdate);
+    }
+
+    public SiteModel createAndSaveSite(Site site) {
+        SiteModel siteModel = new SiteModel();
+        siteModel.setName(site.getName());
+        siteModel.setStatus(StatusSiteModel.INDEXING);
+        siteModel.setStatusTime(LocalDateTime.now());
+        siteModel.setUrl(site.getUrl());
+        siteRepository.save(siteModel);
+        return siteModel;
     }
 }

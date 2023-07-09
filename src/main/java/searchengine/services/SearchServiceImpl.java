@@ -13,6 +13,10 @@ import searchengine.model.LemmaModel;
 import searchengine.model.PageModel;
 import searchengine.model.SiteModel;
 import searchengine.parsers.LemmaFinder;
+import searchengine.repository.IndexRepository;
+import searchengine.repository.LemmaRepository;
+import searchengine.repository.PageRepository;
+import searchengine.repository.SiteRepository;
 
 import java.io.IOException;
 import java.util.*;
@@ -20,7 +24,10 @@ import java.util.*;
 @Data
 @Service
 public class SearchServiceImpl implements SearchService {
-    private final WorkingWithDataService workingWithData;
+    private final SiteRepository siteRepository;
+    private final PageRepository pageRepository;
+    private final LemmaRepository lemmaRepository;
+    private final IndexRepository indexRepository;
     private final int percentageOfPagesForLemmaElimination = 50;
 
     private int countPagesInDB;
@@ -41,9 +48,9 @@ public class SearchServiceImpl implements SearchService {
 
     private List<StatisticsSearch> search(String query, String site, int limit) throws IOException {
         SiteModel siteModel = null;
-        countPagesInDB = workingWithData.getPageRepository().getCountRecords();
+        countPagesInDB = pageRepository.getCountRecords();
         if (!site.isEmpty()) {
-            siteModel = workingWithData.getSiteRepository().findByUrl(site);
+            siteModel = siteRepository.findByUrl(site);
         }
         LemmaFinder lemmaFinder = LemmaFinder.getInstance();
         Set<String> normalFormWordsQuery = lemmaFinder.getNormalFormWords(query);
@@ -65,8 +72,8 @@ public class SearchServiceImpl implements SearchService {
             LemmasWord lemmasWord = new LemmasWord();
             List<LemmaModel> lemmaModels;
             if (siteModel == null) {
-                lemmaModels = workingWithData.getLemmaRepository().findAllByLemma(word);
-            } else lemmaModels = workingWithData.getLemmaRepository().findAllByLemmaAndSite(word, siteModel.getId());
+                lemmaModels = lemmaRepository.findAllByLemma(word);
+            } else lemmaModels = lemmaRepository.findAllByLemmaAndSite(word, siteModel.getId());
             int countPagesLemma = 0;
             int frequency = 0;
             float rank = 0;

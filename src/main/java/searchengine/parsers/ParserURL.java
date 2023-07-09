@@ -6,13 +6,18 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-import searchengine.сonnection.Connection;
+import org.springframework.http.HttpStatus;
+import searchengine.repository.IndexRepository;
+import searchengine.repository.LemmaRepository;
+import searchengine.repository.PageRepository;
+import searchengine.repository.SiteRepository;
+import searchengine.connection.Connection;
 import searchengine.model.StatusSiteModel;
 import searchengine.services.IndexingProcessService;
 import searchengine.model.PageModel;
 import searchengine.model.SiteModel;
-import searchengine.services.WorkingWithDataService;
 
+import java.time.LocalDateTime;
 import java.util.concurrent.RecursiveAction;
 import java.util.regex.Pattern;
 
@@ -21,15 +26,23 @@ import static java.lang.Thread.sleep;
 @Slf4j
 public class ParserURL extends RecursiveAction {
     private final NodeUrl node;
-    private final WorkingWithDataService workingWithDataService;
     private final IndexingProcessService indexingProcessService;
+    private final PageRepository pageRepository;
+    private final SiteRepository siteRepository;
+    private final LemmaRepository lemmaRepository;
+    private final IndexRepository indexRepository;
     private final SiteModel siteModel;
 
-    public ParserURL(NodeUrl node, WorkingWithDataService workingWithDataService, IndexingProcessService indexingProcessService) {
-        siteModel = indexingProcessService.getSite(node.getRootElement().getUrl());
+    public ParserURL(SiteRepository siteRepository, PageRepository pageRepository,
+                     LemmaRepository lemmaRepository, IndexRepository indexRepository,
+                     NodeUrl node, IndexingProcessService indexingProcessService) {
+        this.pageRepository = pageRepository;
+        this.siteRepository = siteRepository;
+        this.lemmaRepository = lemmaRepository;
+        this.indexRepository = indexRepository;
         this.node = node;
-        this.workingWithDataService = workingWithDataService;
         this.indexingProcessService = indexingProcessService;
+        siteModel = indexingProcessService.getSite(node.getRootElement().getUrl());
     }
 
     @Override
@@ -39,13 +52,13 @@ public class ParserURL extends RecursiveAction {
             sleep(random);
             Connection connection = new Connection(node.getUrl());
             Document document = connection.getConnection().get();
-            String pathPageNotNameSite = workingWithDataService.setPathPageNotNameSite(node);
-            PageModel pageModel = workingWithDataService.createPageModel(document, pathPageNotNameSite, siteModel);
+            String pathPageNotNameSite = setPathPageNotNameSite(node);
+            PageModel pageModel = createPageModel(document, pathPageNotNameSite, siteModel);
 
             if (!indexingProcessService.repeatPage(pageModel)) {
-                workingWithDataService.getPageRepository().save(pageModel);
-                workingWithDataService.updateTimeAndSaveSite(siteModel);
-                workingWithDataService.saveLemmasAndIndexes(pageModel);
+                pageRepository.save(pageModel);
+                updateTimeAndSaveSite(siteModel);
+                new LemmaAndIndexCreator(lemmaRepository, indexRepository, pageModel);
             }
 
             Elements elements = document.select("a[href]");
@@ -58,25 +71,25 @@ public class ParserURL extends RecursiveAction {
                 }
             }
         } catch (InterruptedException ignored) {
-            workingWithDataService.savePageInterruptedException(node, siteModel, indexingProcessService);
+            savePageInterruptedException(node, siteModel, indexingProcessService);
         } catch (Exception e) {
-            workingWithDataService.savePageException(node, siteModel, e);
+            savePageException(node, siteModel, e);
             siteModel.setLastError(e.getMessage());
             if (node.getUrl().equals(node.getRootElement().getUrl())) {
                 siteModel.setStatus(StatusSiteModel.FAILED);
             }
-            workingWithDataService.updateTimeAndSaveSite(siteModel);
+            updateTimeAndSaveSite(siteModel);
             log.info(siteModel.getUrl() + " " + e.getMessage());
         }
-        addTasks(node);
+        if (!indexingProcessService.isInterrupted()) {
+            addTasks(node);
+        }
     }
 
     private void addTasks(NodeUrl node) {
-        if (!indexingProcessService.isInterrupted() && indexingProcessService.isFullIndexing()) {
-            for (NodeUrl child : node.getChildren()) {
-                ParserURL task = new ParserURL(child, workingWithDataService, indexingProcessService);
-                task.compute();
-            }
+        for (NodeUrl child : node.getChildren()) {
+            ParserURL task = new ParserURL( siteRepository, pageRepository,lemmaRepository, indexRepository, child, indexingProcessService);
+            task.compute();
         }
     }
 
@@ -88,5 +101,52 @@ public class ParserURL extends RecursiveAction {
         return patternRoot.matcher(url).lookingAt()
                 && !patternNotFile.matcher(url).find()
                 && !patternNotAnchor.matcher(url).find();
+    }
+
+    private void updateTimeAndSaveSite(SiteModel siteModel) {
+        siteModel.setStatusTime(LocalDateTime.now());
+        this.siteRepository.save(siteModel);
+    }
+
+    private synchronized void savePageInterruptedException(NodeUrl node, SiteModel siteModel, IndexingProcessService indexingProcessService) {
+        String pathPageNotNameSite = setPathPageNotNameSite(node);
+        PageModel pageModel = new PageModel();
+        pageModel.setSite(siteModel);
+        pageModel.setCodeHTTPResponse(HttpStatus.NO_CONTENT.value());
+        pageModel.setContentHTMLCode("индексация остановлена пользователем");
+        pageModel.setPathPageNotNameSite(pathPageNotNameSite);
+        if (!indexingProcessService.repeatPage(pageModel)) {
+            pageRepository.save(pageModel);
+        }
+    }
+
+    private synchronized void savePageException(NodeUrl node, SiteModel siteModel, Exception e) {
+        PageModel pageModel = new PageModel();
+        pageModel.setSite(siteModel);
+        pageModel.setPathPageNotNameSite(setPathPageNotNameSite(node));
+        pageModel.setCodeHTTPResponse(HttpStatus.NOT_FOUND.value());
+        pageModel.setContentHTMLCode(e.getMessage());
+        pageRepository.save(pageModel);
+    }
+
+    private static String setPathPageNotNameSite(NodeUrl node) {
+        if (node.getUrl().equals(node.getRootElement().getUrl()) || node.getUrl().equals(node.getRootElement().getUrl() + "/")) {
+            return "/";
+        }
+        if (node.getUrl().endsWith("/")) {
+            String path = node.getUrl().substring(0, node.getUrl().length() - 1);
+            return path.replaceAll(node.getRootElement().getUrl(), "/");
+        }
+        return node.getUrl().replaceAll(node.getRootElement().getUrl(), "/");
+    }
+
+    private static PageModel createPageModel(Document document, String url, SiteModel siteModel) {
+        String content = document.outerHtml();
+        PageModel pageModel = new PageModel();
+        pageModel.setPathPageNotNameSite(url);
+        pageModel.setSite(siteModel);
+        pageModel.setContentHTMLCode(content);
+        pageModel.setCodeHTTPResponse(document.connection().response().statusCode());
+        return pageModel;
     }
 }
