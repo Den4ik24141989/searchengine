@@ -84,6 +84,7 @@ public class Parser implements Runnable {
             log.info(indexingProcessService.getSinglePageUrl() + " страница добавлена/обновлена");
         } catch (IOException e) {
             log.info(siteModel.getUrl() + " " + e.getMessage());
+            indexingProcessService.defaultSet();
         }
     }
     public void updateTimeAndSaveSite(SiteModel siteModel) {

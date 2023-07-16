@@ -36,8 +36,8 @@ public class IndexingServiceImpl implements IndexingService {
     @Override
     public boolean startFullIndexing() {
         if (!isIndexingProcessRunning()) {
-            siteRepository.deleteAll();
             indexingProcessService.enableFullIndexing();
+            siteRepository.deleteAll();
             executeFullIndexing();
             return true;
         }
