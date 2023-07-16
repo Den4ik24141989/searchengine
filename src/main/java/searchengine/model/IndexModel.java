@@ -36,7 +36,7 @@ public class IndexModel implements Serializable {
         return "IndexModel{" +
                 ", lemmaId=" + lemmaId.getLemma() +
                 ", rank=" + rank +
-                "page" + pageId.getSite().getUrl() + pageId.getPathPageNotNameSite() +
+                "page" + pageId.getSite().getUrl() + pageId.getPathAddressWithoutSiteRoot() +
                 '}';
     }
 }

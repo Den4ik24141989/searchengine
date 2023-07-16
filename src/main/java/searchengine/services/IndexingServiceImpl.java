@@ -49,7 +49,7 @@ public class IndexingServiceImpl implements IndexingService {
     public boolean addOrUpdatePage(String url) {
         String[] splitUrl = url.split("/");
         String rootUrl = splitUrl[0] + "//" + splitUrl[1] + splitUrl[2] + "/";
-        String pathPageNotNameSite = url.replaceAll(rootUrl, "/");
+        String pathAddressWithoutSiteRoot = url.replaceAll(rootUrl, "/");
         Site site = new Site();
         site.setUrl(rootUrl);
         if (!sitesList.getSites().contains(site)) {
@@ -58,7 +58,7 @@ public class IndexingServiceImpl implements IndexingService {
         }
         executor = Executors.newSingleThreadExecutor();
         indexingProcessService.enableSingleIndexing(url);
-        PageModel pageModel = pageRepository.findByPath(pathPageNotNameSite);
+        PageModel pageModel = pageRepository.findByPath(pathAddressWithoutSiteRoot);
         if (pageModel != null) {
             SiteModel siteModel = pageModel.getSite();
             updateLemmaFrequency(pageModel);

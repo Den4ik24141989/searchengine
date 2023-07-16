@@ -25,7 +25,7 @@ public class PageModel implements Serializable {
     private SiteModel site;
 
     @Column(name = "path", columnDefinition = "TEXT NOT NULL, Index (path(512))")
-    private String pathPageNotNameSite;
+    private String pathAddressWithoutSiteRoot;
 
     @Column(name = "code",nullable = false)
     private int codeHTTPResponse;
@@ -44,19 +44,19 @@ public class PageModel implements Serializable {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         PageModel pageModel = (PageModel) o;
-        return Objects.equals(site, pageModel.site) && Objects.equals(pathPageNotNameSite, pageModel.pathPageNotNameSite);
+        return Objects.equals(site, pageModel.site) && Objects.equals(pathAddressWithoutSiteRoot, pageModel.pathAddressWithoutSiteRoot);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(site, pathPageNotNameSite);
+        return Objects.hash(site, pathAddressWithoutSiteRoot);
     }
 
     @Override
     public String toString() {
         return "PageModel{" +
                 "site=" + site +
-                ", pathPageNotNameSite='" + pathPageNotNameSite + '\'' +
+                ", pathPageNotNameSite='" + pathAddressWithoutSiteRoot + '\'' +
                 ", codeHTTPResponse=" + codeHTTPResponse +
                 '}';
     }

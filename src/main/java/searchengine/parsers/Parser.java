@@ -71,8 +71,8 @@ public class Parser implements Runnable {
         try {
             Connection connection = new Connection(url);
             Document document = connection.getConnection().get();
-            String pathPageNotNameSite = url.replaceAll(siteModel.getUrl(), "/");
-            PageModel pageModel = createPageModel(document, pathPageNotNameSite, siteModel);
+            String pathAddressWithoutSiteRoot = url.replaceAll(siteModel.getUrl(), "/");
+            PageModel pageModel = createPageModel(document, pathAddressWithoutSiteRoot, siteModel);
             pageRepository.save(pageModel);
             new LemmaAndIndexCreator(lemmaRepository, indexRepository, pageModel);
             if (siteModel.getStatus() == null) {
@@ -94,7 +94,7 @@ public class Parser implements Runnable {
     private static PageModel createPageModel(Document document, String url, SiteModel siteModel) {
         String content = document.outerHtml();
         PageModel pageModel = new PageModel();
-        pageModel.setPathPageNotNameSite(url);
+        pageModel.setPathAddressWithoutSiteRoot(url);
         pageModel.setSite(siteModel);
         pageModel.setContentHTMLCode(content);
         pageModel.setCodeHTTPResponse(document.connection().response().statusCode());

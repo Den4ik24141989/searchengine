@@ -52,8 +52,8 @@ public class ParserURL extends RecursiveAction {
             sleep(random);
             Connection connection = new Connection(node.getUrl());
             Document document = connection.getConnection().get();
-            String pathPageNotNameSite = setPathPageNotNameSite(node);
-            PageModel pageModel = createPageModel(document, pathPageNotNameSite, siteModel);
+            String pathAddressWithoutSiteRoot = setPathAddressWithoutSiteRoot(node);
+            PageModel pageModel = createPageModel(document, pathAddressWithoutSiteRoot, siteModel);
 
             if (!indexingProcessService.repeatPage(pageModel)) {
                 pageRepository.save(pageModel);
@@ -109,12 +109,12 @@ public class ParserURL extends RecursiveAction {
     }
 
     private synchronized void savePageInterruptedException(NodeUrl node, SiteModel siteModel, IndexingProcessService indexingProcessService) {
-        String pathPageNotNameSite = setPathPageNotNameSite(node);
+        String pathAddressWithoutSiteRoot = setPathAddressWithoutSiteRoot(node);
         PageModel pageModel = new PageModel();
         pageModel.setSite(siteModel);
         pageModel.setCodeHTTPResponse(HttpStatus.NO_CONTENT.value());
         pageModel.setContentHTMLCode("индексация остановлена пользователем");
-        pageModel.setPathPageNotNameSite(pathPageNotNameSite);
+        pageModel.setPathAddressWithoutSiteRoot(pathAddressWithoutSiteRoot);
         if (!indexingProcessService.repeatPage(pageModel)) {
             pageRepository.save(pageModel);
         }
@@ -123,13 +123,13 @@ public class ParserURL extends RecursiveAction {
     private synchronized void savePageException(NodeUrl node, SiteModel siteModel, Exception e) {
         PageModel pageModel = new PageModel();
         pageModel.setSite(siteModel);
-        pageModel.setPathPageNotNameSite(setPathPageNotNameSite(node));
+        pageModel.setPathAddressWithoutSiteRoot(setPathAddressWithoutSiteRoot(node));
         pageModel.setCodeHTTPResponse(HttpStatus.NOT_FOUND.value());
         pageModel.setContentHTMLCode(e.getMessage());
         pageRepository.save(pageModel);
     }
 
-    private static String setPathPageNotNameSite(NodeUrl node) {
+    private static String setPathAddressWithoutSiteRoot(NodeUrl node) {
         if (node.getUrl().equals(node.getRootElement().getUrl()) || node.getUrl().equals(node.getRootElement().getUrl() + "/")) {
             return "/";
         }
@@ -143,7 +143,7 @@ public class ParserURL extends RecursiveAction {
     private static PageModel createPageModel(Document document, String url, SiteModel siteModel) {
         String content = document.outerHtml();
         PageModel pageModel = new PageModel();
-        pageModel.setPathPageNotNameSite(url);
+        pageModel.setPathAddressWithoutSiteRoot(url);
         pageModel.setSite(siteModel);
         pageModel.setContentHTMLCode(content);
         pageModel.setCodeHTTPResponse(document.connection().response().statusCode());

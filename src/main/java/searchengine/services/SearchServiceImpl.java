@@ -131,7 +131,7 @@ public class SearchServiceImpl implements SearchService {
             Document document = Jsoup.parse(page.getPageModel().getContentHTMLCode());
             StatisticsSearch statisticsSearch = new StatisticsSearch();
             statisticsSearch.setRelevance((float) page.getRankPage() / maxRelevance);
-            statisticsSearch.setUri(page.getPageModel().getPathPageNotNameSite().substring(1));
+            statisticsSearch.setUri(page.getPageModel().getPathAddressWithoutSiteRoot().substring(1));
             statisticsSearch.setSite(page.getPageModel().getSite().getUrl());
             statisticsSearch.setSiteName(page.getPageModel().getSite().getName());
             statisticsSearch.setTitle(document.title());
