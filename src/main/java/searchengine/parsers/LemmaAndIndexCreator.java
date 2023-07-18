@@ -1,5 +1,7 @@
 package searchengine.parsers;
 
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 import searchengine.model.IndexModel;
 import searchengine.model.LemmaModel;
 import searchengine.model.PageModel;
@@ -26,7 +28,8 @@ public class LemmaAndIndexCreator {
     private void createAndSaveLemmasAndIndexes() throws IOException {
         LemmaFinder lemmaFinder = LemmaFinder.getInstance();
         List<IndexModel> indexes = new ArrayList<>();
-        HashMap<String, Integer> collectLemmas = lemmaFinder.collectLemmas(pageModel.getContentHTMLCode());
+        Document document = Jsoup.parse(pageModel.getContentHTMLCode());
+        HashMap<String, Integer> collectLemmas = lemmaFinder.collectLemmas(document.text());
         for (String word : collectLemmas.keySet()) {
             LemmaModel lemmaModel = saveLemma(word);
             int rank = collectLemmas.get(word);
